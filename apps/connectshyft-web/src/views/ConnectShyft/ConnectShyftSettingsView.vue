@@ -321,26 +321,26 @@ const statusPanelClass = computed(() => {
 
 const statusMessage = computed(() => {
   if (readiness.value.degradedMode) {
-    return 'Calls and texts are working, but ConnectShyft is still using the backup line.';
+    return 'Calls can reach you now, and texting is available when a conversation is ready to text. Calls are still using the backup line.';
   }
 
   if (readiness.value.voiceReady && readiness.value.smsReady) {
-    return 'Calls and texts are ready.';
+    return 'Calls are ready, and texting is available when a conversation is ready to text.';
   }
 
   if (readiness.value.voiceReady) {
-    return 'Calls are ready, but texting still needs a little more setup.';
+    return 'Calls are ready. Texting still needs setup before a conversation can send texts.';
   }
 
   if (readiness.value.smsReady) {
-    return 'Texting is ready, but calls still need a little more setup.';
+    return 'Texting is available when a conversation is ready to text. Calls still need a callback number.';
   }
 
   if (hasSavedCallbackNumber.value) {
     return 'Your callback number is saved, but calling still needs a little more setup.';
   }
 
-  return 'Save a callback number so calls and texts can reach you.';
+  return 'Calls still need a callback number, and texting still needs setup before a conversation can send texts.';
 });
 
 const nextActionMessage = computed(() => {
@@ -349,14 +349,20 @@ const nextActionMessage = computed(() => {
   }
 
   if (readiness.value.degradedMode) {
-    return 'Save your own callback number so ConnectShyft no longer needs the backup line.';
+    return 'Save your callback number to stop using the backup line for calls.';
   }
 
-  if (!hasSavedCallbackNumber.value) {
-    return 'Save a callback number to finish setup.';
+  if (!readiness.value.voiceReady) {
+    return hasSavedCallbackNumber.value
+      ? 'Finish the remaining calling setup.'
+      : 'Save a callback number so calls can reach you.';
   }
 
-  return 'Finish the remaining calling and texting setup.';
+  if (!readiness.value.smsReady) {
+    return 'Finish the remaining texting setup for this workspace.';
+  }
+
+  return '';
 });
 
 const voiceStatusDetail = computed(() => {
@@ -369,26 +375,22 @@ const voiceStatusDetail = computed(() => {
   }
 
   if (hasSavedCallbackNumber.value) {
-    return 'Calls still need a working callback path.';
+    return 'Calls still need a working callback number.';
   }
 
-  return 'Calls are waiting for a saved callback number.';
+  return 'Calls are waiting for a callback number.';
 });
 
 const smsStatusDetail = computed(() => {
   if (readiness.value.degradedMode) {
-    return 'Texting stays available while ConnectShyft uses the backup line.';
+    return 'Texting can still go out when a conversation is ready to text.';
   }
 
   if (readiness.value.smsReady) {
-    return 'Texting is ready from this workspace.';
+    return 'This workspace can text when a conversation is ready to text.';
   }
 
-  if (hasSavedCallbackNumber.value) {
-    return 'Texting still needs a little more setup.';
-  }
-
-  return 'Texting is waiting for calling setup to finish.';
+  return 'Texting still needs setup before a conversation can send texts.';
 });
 
 const readinessCardClass = (isReady: boolean): string => isReady

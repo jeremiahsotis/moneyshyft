@@ -3,6 +3,7 @@ import type { Knex } from 'knex';
 import db from '../../config/knex';
 import { CAPABILITIES, hasCapability } from '../../platform/rbac/capabilities';
 import { isStrictUtcIsoTimestamp } from '../../platform/time/timezoneService';
+import logger from '../../utils/logger';
 import {
   AsyncPeopleCoreService,
   peopleCoreServiceAsync,
@@ -1256,7 +1257,7 @@ export class KnexConnectShyftThreadStore {
         } as ThreadPersistenceTransitionResult;
       }
 
-      const normalizedActorUserId = normalizeUuid(input.actorUserId);
+      const normalizedActorUserId = normalizeString(input.actorUserId) || null;
       if (input.nextState !== 'UNCLAIMED' && !normalizedActorUserId) {
         return {
           ok: false,
@@ -1834,6 +1835,14 @@ export class AsyncConnectShyftThreadService {
       if (!isMissingPersistenceError(error)) {
         throw error;
       }
+
+      logger.error('connectshyft thread transition persistence failed', {
+        tenantId: input.tenantId,
+        threadId: input.threadId,
+        nextState: input.nextState,
+        actorUserId: input.actorUserId,
+        error: error,
+      });
 
       return buildPersistenceUnavailableRefusal();
     }

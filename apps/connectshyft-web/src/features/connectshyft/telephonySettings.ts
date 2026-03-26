@@ -258,7 +258,7 @@ const parseNextActions = (
       code: normalizeString(action?.code),
       message: sanitizeConnectShyftOperatorCopy(
         action?.message,
-        'Complete the remaining voice-forwarding setup steps.',
+        'Complete the remaining call and text setup steps.',
       ),
     }))
     .filter((action) => action.code.length > 0 && action.message.length > 0);
@@ -346,7 +346,7 @@ export const fetchConnectShyftTelephonyReadiness = async (): Promise<ConnectShyf
       throw new Error(
         parseRefusalMessage(
           response.data,
-          'Unable to load voice-forwarding readiness right now.',
+          'Unable to load call and text status right now.',
         ),
       );
     }
@@ -361,7 +361,7 @@ export const fetchConnectShyftTelephonyReadiness = async (): Promise<ConnectShyf
     throw new Error(
       parseRefusalMessage(
         errorPayload,
-        'Unable to load voice-forwarding readiness right now.',
+        'Unable to load call and text status right now.',
       ),
     );
   }

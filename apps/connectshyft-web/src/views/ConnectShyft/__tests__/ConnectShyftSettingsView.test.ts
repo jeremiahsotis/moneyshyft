@@ -121,8 +121,8 @@ const createMissingReadiness = () => ({
   callbackNumberNormalized: false,
   voiceReady: false,
   bridgeCallRunnable: false,
-  smsReady: false,
-  messageDispatchRunnable: false,
+  smsReady: true,
+  messageDispatchRunnable: true,
   callbackNumber: {
     value: null,
     rawInput: null,
@@ -138,7 +138,7 @@ const createMissingReadiness = () => ({
       category: 'callback_number',
       message: 'Voice forwarding requires an operator callback number.',
       blocking: true,
-      channel: 'both',
+      channel: 'voice',
     },
   ],
   nextActions: [
@@ -201,7 +201,7 @@ const createDegradedReadiness = () => ({
       category: 'orgunit_fallback',
       message: 'Using the orgUnit fallback phone until the operator callback number is set.',
       blocking: false,
-      channel: 'both',
+      channel: 'voice',
     },
   ],
   nextActions: [
@@ -317,7 +317,7 @@ describe('ConnectShyftSettingsView', () => {
       'Ready',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-message"]').text()).toContain(
-      'Calls and texts are ready.',
+      'Calls are ready, and texting is available when a conversation is ready to text.',
     );
     expect(wrapper.get('[data-testid="connectshyft-voice-readiness-chip"]').text()).toContain(
       'Ready',
@@ -334,7 +334,7 @@ describe('ConnectShyftSettingsView', () => {
     ).toBe('(317) 555-0100');
   });
 
-  it('shows the empty state and both blocked channel summaries when callback setup is missing', async () => {
+  it('shows calling setup as blocked while texting stays available when the callback number is missing', async () => {
     const wrapper = await renderSettingsView(
       '/app/connectshyft/settings?refusedPath=%2Fapp%2Fconnectshyft%2Fsettings%2Favailability',
     );
@@ -346,7 +346,7 @@ describe('ConnectShyftSettingsView', () => {
       'No callback number saved yet.',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-message"]').text()).toContain(
-      'Save a callback number so calls and texts can reach you.',
+      'Texting is available when a conversation is ready to text. Calls still need a callback number.',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-chip"]').text()).toContain(
       'Needs setup',
@@ -355,10 +355,10 @@ describe('ConnectShyftSettingsView', () => {
       'Blocked',
     );
     expect(wrapper.get('[data-testid="connectshyft-sms-readiness-chip"]').text()).toContain(
-      'Blocked',
+      'Ready',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-next-action"]').text()).toContain(
-      'Save a callback number to finish setup.',
+      'Save a callback number so calls can reach you.',
     );
   });
 
@@ -371,7 +371,7 @@ describe('ConnectShyftSettingsView', () => {
       'Using backup line',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-readiness-message"]').text()).toContain(
-      'Calls and texts are working, but ConnectShyft is still using the backup line.',
+      'Calls can reach you now, and texting is available when a conversation is ready to text. Calls are still using the backup line.',
     );
     expect(wrapper.get('[data-testid="connectshyft-degraded-mode-banner"]').text()).toContain(
       'Backup line active',
@@ -383,7 +383,7 @@ describe('ConnectShyftSettingsView', () => {
       'Ready',
     );
     expect(wrapper.get('[data-testid="connectshyft-callback-next-action"]').text()).toContain(
-      'Save your own callback number so ConnectShyft no longer needs the backup line.',
+      'Save your callback number to stop using the backup line for calls.',
     );
   });
 

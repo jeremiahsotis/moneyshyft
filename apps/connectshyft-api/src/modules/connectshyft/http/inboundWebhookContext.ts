@@ -47,6 +47,21 @@ export type ConnectShyftResolvedWebhookCorrelation =
     providerNumberE164: string | null;
   };
 
+export type ResolveInboundWebhookCorrelationInput = {
+  body: unknown;
+  channelHint: 'sms' | 'voice';
+  providerName: string;
+  providerCorrelation: {
+    providerLegId: string | null;
+    providerMessageId: string | null;
+    providerEventId: string | null;
+    providerNumber: string | null;
+  };
+  tenantIdHint?: string | null;
+};
+
+export type ResolveInboundWebhookCorrelationResult = ConnectShyftResolvedWebhookCorrelation;
+
 export type ConnectShyftInboundWebhookAccessContext = {
   routeKind: ConnectShyftInboundWebhookRouteKind;
   providerSelection: ConnectShyftProviderResolutionSuccess;
@@ -138,18 +153,9 @@ const resolveWebhookCorrelationFailure = (
   };
 };
 
-const resolveInboundWebhookCorrelation = async (input: {
-  body: unknown;
-  channelHint: 'sms' | 'voice';
-  providerName: string;
-  providerCorrelation: {
-    providerLegId: string | null;
-    providerMessageId: string | null;
-    providerEventId: string | null;
-    providerNumber: string | null;
-  };
-  tenantIdHint?: string | null;
-}): Promise<ConnectShyftResolvedWebhookCorrelation> => {
+export const resolveInboundWebhookCorrelation = async (
+  input: ResolveInboundWebhookCorrelationInput,
+): Promise<ResolveInboundWebhookCorrelationResult> => {
   const payload = asRecord(input.body);
   const tenantId = normalizeString(payload?.tenantId);
   const orgUnitId = normalizeString(payload?.orgUnitId);

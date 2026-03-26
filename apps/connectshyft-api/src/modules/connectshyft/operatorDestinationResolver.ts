@@ -253,7 +253,6 @@ implements ConnectShyftOperatorDestinationStore {
     const row = await this.usersTable()
       .where({
         id: input.userId,
-        household_id: input.tenantId,
       })
       .first(['id', 'phone_e164']);
 

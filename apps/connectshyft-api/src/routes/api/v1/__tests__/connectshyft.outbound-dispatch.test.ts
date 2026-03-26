@@ -2,7 +2,6 @@ import connectShyftRouter, {
   ensureConnectShyftDispatchReadySmsTargetForTests,
   resetConnectShyftOutboundDispatchReplayLedgerForTests,
   resolveConnectShyftSmsSenderForTests,
-  resolveConnectShyftSmsTargetForTests,
 } from '../connectshyft';
 import { TelephonyProviderFailure } from '../../../../../../../domains/communication';
 import {
@@ -15,16 +14,15 @@ import {
 } from '../../../../modules/connectshyft/bridgeSessions';
 import { resetConnectShyftCanonicalEventsForTests } from '../../../../modules/connectshyft/canonicalEvents';
 import {
-  connectShyftNeighborServiceAsync,
-  type ConnectShyftNeighborPhone,
-  type ConnectShyftResolveNeighborResult,
-} from '../../../../modules/connectshyft/neighbors';
-import {
   connectShyftNumberMappingServiceAsync,
   type ConnectShyftNumberMapping,
 } from '../../../../modules/connectshyft/numberMappings';
 import * as OperatorDestinationResolverModule from '../../../../modules/connectshyft/operatorDestinationResolver';
 import { resetConnectShyftProviderCorrelationStateForTests } from '../../../../modules/connectshyft/providerCorrelationMappings';
+import {
+  buildResolveThreadSmsTarget,
+} from '../../../../modules/connectshyft/threadSmsTargetResolver';
+import * as ThreadSmsTargetResolverModule from '../../../../modules/connectshyft/threadSmsTargetResolver';
 import * as TelephonyReadinessModule from '../../../../modules/connectshyft/telephonyReadiness';
 import type { ConnectShyftTelephonyReadiness } from '../../../../modules/connectshyft/telephonyReadiness';
 import {
@@ -249,53 +247,6 @@ const invokeRoute = async (input: {
   });
 };
 
-const buildResolvedNeighborPhone = (
-  overrides: Partial<ConnectShyftNeighborPhone> & Pick<ConnectShyftNeighborPhone, 'phoneId' | 'value'>,
-): ConnectShyftNeighborPhone => ({
-  phoneId: overrides.phoneId,
-  label: overrides.label ?? 'mobile',
-  value: overrides.value,
-  rawInput: overrides.rawInput ?? overrides.value,
-  displayNational: overrides.displayNational ?? '(260) 555-0111',
-  countryCode: overrides.countryCode ?? '1',
-  nationalNumber: overrides.nationalNumber ?? '2605550111',
-  extension: overrides.extension ?? null,
-  validationStatus: overrides.validationStatus ?? 'valid',
-  usageType: overrides.usageType ?? 'mobile',
-  source: overrides.source ?? 'user_entered',
-  sortOrder: overrides.sortOrder ?? 0,
-  isPrimary: overrides.isPrimary ?? false,
-  isShared: overrides.isShared ?? false,
-  verificationStatus: overrides.verificationStatus ?? 'verified',
-  isActive: overrides.isActive ?? true,
-  createdAtUtc: overrides.createdAtUtc ?? '2026-03-11T12:00:00.000Z',
-  updatedAtUtc: overrides.updatedAtUtc ?? '2026-03-11T12:00:00.000Z',
-});
-
-const buildResolvedNeighborResult = (
-  phones: ConnectShyftNeighborPhone[],
-): ConnectShyftResolveNeighborResult => ({
-  ok: true,
-  code: 'CONNECTSHYFT_NEIGHBOR_RESOLVED',
-  httpStatus: 200,
-  data: {
-    neighbor: {
-      neighborId: 'neighbor-connectshyft-f1-1001',
-      tenantId: 'tenant-connectshyft-f1',
-      orgUnitId: 'org-connectshyft-f1-east',
-      firstName: 'Route',
-      lastName: 'Fixture',
-      prefersTexting: 'YES',
-      isDeleted: false,
-      deletedAtUtc: null,
-      deletedByUserId: null,
-      phones,
-      createdAtUtc: '2026-03-11T12:00:00.000Z',
-      updatedAtUtc: '2026-03-11T12:00:00.000Z',
-    },
-  },
-});
-
 const buildResolvedSmsPreference = (
   overrides: Partial<ConnectShyftResolvedSmsPreference> = {},
 ): ConnectShyftResolvedSmsPreference => ({
@@ -391,6 +342,40 @@ const buildSmsTargetThread = (overrides: Partial<ConnectShyftThread> = {}): Conn
   updatedAtUtc: overrides.updatedAtUtc ?? '2026-03-11T12:00:00.000Z',
 });
 
+const buildPeopleCoreContactPoint = (overrides: Record<string, unknown> = {}) => ({
+  id: 'contact-point-connectshyft-f1-1001',
+  tenantId: 'tenant-connectshyft-f1',
+  type: 'phone',
+  normalizedValue: '+12605550111',
+  rawValue: '(260) 555-0111',
+  status: 'active_personal',
+  firstSeenAt: '2026-03-11T12:00:00.000Z',
+  lastSeenAt: '2026-03-11T12:00:00.000Z',
+  suspectedShared: false,
+  confirmedShared: false,
+  reassignmentSuspected: false,
+  createdAt: '2026-03-11T12:00:00.000Z',
+  updatedAt: '2026-03-11T12:00:00.000Z',
+  ...overrides,
+});
+
+const buildPeopleCoreContactPointLink = (overrides: Record<string, unknown> = {}) => ({
+  id: 'contact-point-link-connectshyft-f1-1001',
+  contactPointId: 'contact-point-connectshyft-f1-1001',
+  subjectType: 'person',
+  subjectId: '33333333-3333-4333-8333-333333333333',
+  linkType: 'primary',
+  confidenceBand: 'high',
+  isCurrent: true,
+  isPrimary: true,
+  manuallyConfirmed: false,
+  firstLinkedAt: '2026-03-11T12:00:00.000Z',
+  linkedBy: 'system',
+  createdAt: '2026-03-11T12:00:00.000Z',
+  updatedAt: '2026-03-11T12:00:00.000Z',
+  ...overrides,
+});
+
 const buildDispatchReadyTelephonyReadiness = (
   overrides: Partial<ConnectShyftTelephonyReadiness> = {},
 ): ConnectShyftTelephonyReadiness => ({
@@ -440,6 +425,7 @@ describe('connectshyft outbound dispatch routes', () => {
   const previousEnableFlags = process.env.ENABLE_TEST_CONNECTSHYFT_FLAGS;
   let inspectReadinessSpy: jest.SpyInstance;
   let resolveOperatorDestinationSpy: jest.SpyInstance;
+  let resolveThreadSmsTargetSpy: jest.SpyInstance;
 
   const setDispatchReadyTelephony = (
     overrides: Partial<ConnectShyftTelephonyReadiness> = {},
@@ -481,6 +467,16 @@ describe('connectshyft outbound dispatch routes', () => {
       userId: 'user-connectshyft-f1-primary-operator',
       orgUnitId: 'org-connectshyft-f1-east',
     });
+    resolveThreadSmsTargetSpy = jest.spyOn(
+      ThreadSmsTargetResolverModule,
+      'resolveThreadSmsTarget',
+    ).mockImplementation(async (input) => ({
+      ok: true,
+      contactPointId: `contact-point-${input.personId}`,
+      normalizedValue: input.threadId.includes('thread-f2')
+        ? '+12605550112'
+        : '+12605550111',
+    }));
     jest.spyOn(connectShyftNumberMappingServiceAsync, 'resolveRoutingMappingByNumber').mockImplementation(
       async (input) => resolveRoutingMappingByNumberFromState(input),
     );
@@ -559,8 +555,7 @@ describe('connectshyft outbound dispatch routes', () => {
     }));
   });
 
-  it('prefers an explicit outbound request target over neighbor-record phones for SMS dispatch', async () => {
-    const resolveNeighborSpy = jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor');
+  it('ignores an explicit outbound request target and dispatches SMS to the PeopleCore contact point', async () => {
     jest.spyOn(connectShyftSmsPreferenceOverrideServiceAsync, 'resolvePreference').mockResolvedValue(
       buildResolvedSmsPreference(),
     );
@@ -580,9 +575,14 @@ describe('connectshyft outbound dispatch routes', () => {
       ok: true,
       code: 'CONNECTSHYFT_THREAD_MESSAGE_DISPATCHED',
     });
-    expect(resolveNeighborSpy).not.toHaveBeenCalled();
+    expect(resolveThreadSmsTargetSpy).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: 'thread-f1-unclaimed-1001',
+      personId: 'person-connectshyft-f1-1001',
+    }));
     expect(sendSmsMock).toHaveBeenCalledWith(expect.objectContaining({
-      targetPhone: '+12605550999',
+      targetPhone: '+12605550111',
       senderPhone: '+12605550191',
     }));
   });
@@ -658,165 +658,117 @@ describe('connectshyft outbound dispatch routes', () => {
     }));
   });
 
-  it('selects the primary active valid neighbor phone when no explicit SMS target is provided', async () => {
-    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue(
-      buildResolvedNeighborResult([
-        buildResolvedNeighborPhone({
-          phoneId: 'phone-primary',
-          value: '+12605550141',
-          isPrimary: true,
-          sortOrder: 0,
-        }),
-        buildResolvedNeighborPhone({
-          phoneId: 'phone-secondary',
-          value: '+12605550142',
-          isPrimary: false,
-          sortOrder: 1,
-        }),
+  it('resolves outbound SMS from the single current PeopleCore contact point', async () => {
+    const resolveThreadSmsTarget = buildResolveThreadSmsTarget({
+      listContactPointLinks: jest.fn(async () => [
+        buildPeopleCoreContactPointLink(),
       ]),
-    );
+      getContactPoint: jest.fn(async () => buildPeopleCoreContactPoint({
+        id: 'contact-point-connectshyft-f1-1041',
+        normalizedValue: '+12605550141',
+      })),
+    } as any);
 
-    const response = await resolveConnectShyftSmsTargetForTests({
+    const response = await resolveThreadSmsTarget({
       tenantId: 'tenant-connectshyft-f1',
       orgUnitId: 'org-connectshyft-f1-east',
       threadId: '33333333-3333-4333-8333-333333333333',
-      thread: buildSmsTargetThread(),
-      actorRoles: ['ORGUNIT_MEMBER'],
-      requestedTargetPhone: null,
-      allowTestFallback: false,
+      personId: '33333333-3333-4333-8333-333333333333',
     });
 
-    expect(response).toMatchObject({
+    expect(response).toEqual({
       ok: true,
-      source: 'primary_active_valid_phone',
-      targetPhone: '+12605550141',
+      contactPointId: 'contact-point-connectshyft-f1-1041',
+      normalizedValue: '+12605550141',
     });
   });
 
-  it('selects the only active valid neighbor phone when the primary phone is not SMS eligible', async () => {
-    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue(
-      buildResolvedNeighborResult([
-        buildResolvedNeighborPhone({
-          phoneId: 'phone-invalid-primary',
-          value: '+12605550143',
-          isPrimary: true,
-          validationStatus: 'invalid',
-          sortOrder: 0,
+  it('refuses ambiguous PeopleCore SMS target resolution before provider dispatch', async () => {
+    const resolveThreadSmsTarget = buildResolveThreadSmsTarget({
+      listContactPointLinks: jest.fn(async () => [
+        buildPeopleCoreContactPointLink({
+          contactPointId: 'contact-point-connectshyft-f1-1045',
         }),
-        buildResolvedNeighborPhone({
-          phoneId: 'phone-only-valid',
-          value: '+12605550144',
+        buildPeopleCoreContactPointLink({
+          id: 'contact-point-link-connectshyft-f1-1046',
+          contactPointId: 'contact-point-connectshyft-f1-1046',
+          linkType: 'secondary',
           isPrimary: false,
-          sortOrder: 1,
         }),
       ]),
-    );
+      getContactPoint: jest.fn(async ({ contactPointId }: { contactPointId: string }) => {
+        if (contactPointId === 'contact-point-connectshyft-f1-1045') {
+          return buildPeopleCoreContactPoint({
+            id: contactPointId,
+            normalizedValue: '+12605550145',
+          });
+        }
 
-    const response = await resolveConnectShyftSmsTargetForTests({
-      tenantId: 'tenant-connectshyft-f1',
-      orgUnitId: 'org-connectshyft-f1-east',
-      threadId: '44444444-4444-4444-8444-444444444444',
-      thread: buildSmsTargetThread({
-        neighborId: '55555555-5555-4555-8555-555555555555',
+        return buildPeopleCoreContactPoint({
+          id: contactPointId,
+          normalizedValue: '+12605550146',
+        });
       }),
-      actorRoles: ['ORGUNIT_MEMBER'],
-      requestedTargetPhone: null,
-      allowTestFallback: false,
-    });
+    } as any);
 
-    expect(response).toMatchObject({
-      ok: true,
-      source: 'only_active_valid_phone',
-      targetPhone: '+12605550144',
-    });
-  });
-
-  it('refuses ambiguous SMS target resolution before provider dispatch', async () => {
-    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue(
-      buildResolvedNeighborResult([
-        buildResolvedNeighborPhone({
-          phoneId: 'phone-a',
-          value: '+12605550145',
-          isPrimary: false,
-          sortOrder: 0,
-        }),
-        buildResolvedNeighborPhone({
-          phoneId: 'phone-b',
-          value: '+12605550146',
-          isPrimary: false,
-          sortOrder: 1,
-        }),
-      ]),
-    );
-
-    const response = await resolveConnectShyftSmsTargetForTests({
+    const response = await resolveThreadSmsTarget({
       tenantId: 'tenant-connectshyft-f1',
       orgUnitId: 'org-connectshyft-f1-east',
       threadId: '66666666-6666-4666-8666-666666666666',
-      thread: buildSmsTargetThread({
-        neighborId: '77777777-7777-4777-8777-777777777777',
-      }),
-      actorRoles: ['ORGUNIT_MEMBER'],
-      requestedTargetPhone: null,
-      allowTestFallback: false,
+      personId: '33333333-3333-4333-8333-333333333333',
     });
 
-    expect(response).toMatchObject({
+    expect(response).toEqual({
       ok: false,
       code: 'CONNECTSHYFT_SMS_TARGET_AMBIGUOUS',
-      data: {
-        targetResolution: {
-          reason: 'ambiguous_target',
-          source: 'neighbor_record',
-          candidateCount: 2,
-          candidatePhones: ['+12605550145', '+12605550146'],
-        },
-      },
+      message: 'This conversation needs one clear textable contact before sending a text.',
+      reason: 'ambiguous_target',
     });
   });
 
-  it('refuses outbound SMS when no active valid neighbor phone exists', async () => {
-    jest.spyOn(connectShyftNeighborServiceAsync, 'resolveNeighbor').mockResolvedValue(
-      buildResolvedNeighborResult([
-        buildResolvedNeighborPhone({
-          phoneId: 'phone-inactive',
-          value: '+12605550147',
-          isPrimary: true,
-          isActive: false,
-          sortOrder: 0,
-        }),
-        buildResolvedNeighborPhone({
-          phoneId: 'phone-needs-review',
-          value: '+12605550148',
-          isPrimary: false,
-          validationStatus: 'needs_review',
-          sortOrder: 1,
-        }),
+  it('refuses outbound SMS when PeopleCore has no current textable contact point', async () => {
+    const resolveThreadSmsTarget = buildResolveThreadSmsTarget({
+      listContactPointLinks: jest.fn(async () => [
+        buildPeopleCoreContactPointLink(),
       ]),
-    );
+      getContactPoint: jest.fn(async () => buildPeopleCoreContactPoint({
+        status: 'archived',
+      })),
+    } as any);
 
-    const response = await resolveConnectShyftSmsTargetForTests({
+    const response = await resolveThreadSmsTarget({
       tenantId: 'tenant-connectshyft-f1',
       orgUnitId: 'org-connectshyft-f1-east',
       threadId: '88888888-8888-4888-8888-888888888888',
-      thread: buildSmsTargetThread({
-        neighborId: '99999999-9999-4999-8999-999999999999',
-      }),
-      actorRoles: ['ORGUNIT_MEMBER'],
-      requestedTargetPhone: null,
-      allowTestFallback: false,
+      personId: '33333333-3333-4333-8333-333333333333',
     });
 
-    expect(response).toMatchObject({
+    expect(response).toEqual({
+      ok: false,
+      code: 'CONNECTSHYFT_SMS_TARGET_INVALID',
+      message: 'This conversation cannot send a text until the saved contact can receive texts.',
+      reason: 'invalid_target',
+    });
+  });
+
+  it('refuses outbound SMS when PeopleCore has no current contact point for the thread person', async () => {
+    const resolveThreadSmsTarget = buildResolveThreadSmsTarget({
+      listContactPointLinks: jest.fn(async () => []),
+      getContactPoint: jest.fn(),
+    } as any);
+
+    const response = await resolveThreadSmsTarget({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      threadId: '99999999-9999-4999-8999-999999999999',
+      personId: '33333333-3333-4333-8333-333333333333',
+    });
+
+    expect(response).toEqual({
       ok: false,
       code: 'CONNECTSHYFT_SMS_TARGET_REQUIRED',
-      data: {
-        targetResolution: {
-          reason: 'missing_target',
-          source: 'neighbor_record',
-          candidateCount: 0,
-        },
-      },
+      message: 'This conversation cannot send a text until a textable contact is ready.',
+      reason: 'missing_target',
     });
   });
 
@@ -1188,7 +1140,7 @@ describe('connectshyft outbound dispatch routes', () => {
     expect(sendSmsMock).not.toHaveBeenCalled();
   });
 
-  it('returns CONNECTSHYFT_SMS_NOT_READY before route-level sender-ambiguity validation when telephony readiness blocks outbound SMS', async () => {
+  it('returns CONNECTSHYFT_SMS_NOT_READY before route-level sender-ambiguity validation when webhook validation blocks outbound SMS', async () => {
     const routingMappingMock = connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber as jest.MockedFunction<
       typeof connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber
     >;
@@ -1212,31 +1164,22 @@ describe('connectshyft outbound dispatch routes', () => {
       ],
     });
     inspectReadinessSpy.mockResolvedValueOnce(buildDispatchReadyTelephonyReadiness({
-      callbackNumberConfigured: false,
-      callbackNumberNormalized: false,
+      webhookSignatureConfigured: false,
       smsReady: false,
       messageDispatchRunnable: false,
-      callbackNumber: {
-        value: null,
-        rawInput: null,
-        createdAtUtc: null,
-        updatedAtUtc: null,
-        persistenceAvailable: true,
-      },
-      operatorPhoneSource: 'none',
       blockingReasons: [
         {
-          code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
-          category: 'callback_number',
-          message: 'Voice forwarding requires an operator callback number.',
+          code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
+          category: 'provider',
+          message: 'Webhook signature verification must be configured before outbound telephony can be dispatched.',
           blocking: true,
           channel: 'both',
         },
       ],
       nextActions: [
         {
-          code: 'SET_OPERATOR_CALLBACK_NUMBER',
-          message: 'Save a callback / forwarding number for the current operator.',
+          code: 'CONFIGURE_CONNECTSHYFT_WEBHOOK_SIGNATURE',
+          message: 'Configure webhook signature verification for the active telephony provider.',
         },
       ],
     }));
@@ -1257,11 +1200,10 @@ describe('connectshyft outbound dispatch routes', () => {
       code: 'CONNECTSHYFT_SMS_NOT_READY',
       data: {
         telephonyReadiness: {
-          callbackNumberConfigured: false,
           smsReady: false,
           blockingReasons: [
             expect.objectContaining({
-              code: 'CONNECTSHYFT_OPERATOR_CALLBACK_NUMBER_MISSING',
+              code: 'CONNECTSHYFT_WEBHOOK_SIGNATURE_NOT_CONFIGURED',
             }),
           ],
         },
