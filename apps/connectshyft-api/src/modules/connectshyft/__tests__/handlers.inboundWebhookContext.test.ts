@@ -5,11 +5,13 @@ import {
   executeConnectShyftInboundWebhookRoute,
   registerConnectShyftInboundWebhookCoreExecutor,
   resolveConnectShyftInboundWebhookAccessContext,
+  resolveInboundWebhookCorrelation,
 } from '../http/inboundWebhookContext';
 import * as inboundWebhookContextModule from '../http/inboundWebhookContext';
 import * as accessContextModule from '../http/accessContext';
 import * as providerRegistryModule from '../providerRegistry';
 import * as providerCorrelationMappingsModule from '../providerCorrelationMappings';
+import { connectShyftNumberMappingServiceAsync } from '../numberMappings';
 import * as bridgeSessionsModule from '../bridgeSessions';
 import * as canonicalEventsModule from '../canonicalEvents';
 import * as inboundSmsModule from '../inboundSms';
@@ -295,6 +297,130 @@ describe('connectshyft inbound webhook helper boundary', () => {
         },
       }),
     }));
+  });
+
+  it('continues first-contact correlation on a mapped provider number when provider identifiers are absent', async () => {
+    const correlationLookupSpy = jest.spyOn(
+      providerCorrelationMappingsModule,
+      'resolveConnectShyftProviderCorrelationByIdentifiers',
+    ).mockResolvedValue({
+      ok: false,
+      reason: 'missing-identifiers',
+    } as any);
+    const numberMappingSpy = jest.spyOn(
+      connectShyftNumberMappingServiceAsync,
+      'resolveRoutingMappingByNumber',
+    ).mockResolvedValue({
+      status: 'found',
+      mapping: {
+        mappingId: 'mapping-connectshyft-c9-1001',
+        tenantId: TEST_TENANT_ID,
+        orgUnitId: TEST_ORG_UNIT_ID,
+        twilioNumberE164: '+12605550199',
+        label: 'Main',
+        isActive: true,
+        createdAtUtc: '2026-03-26T00:00:00.000Z',
+        updatedAtUtc: '2026-03-26T00:00:00.000Z',
+      },
+    } as any);
+
+    const correlation = await resolveInboundWebhookCorrelation({
+      body: {
+        eventType: 'MessageReceived',
+      },
+      channelHint: 'sms',
+      providerName: 'telnyx',
+      providerCorrelation: {
+        providerLegId: null,
+        providerMessageId: null,
+        providerEventId: null,
+        providerNumber: '+12605550199',
+      },
+      tenantIdHint: TEST_TENANT_ID,
+    });
+
+    expect(correlation).toEqual({
+      ok: true,
+      source: 'number_mapping',
+      tenantId: TEST_TENANT_ID,
+      orgUnitId: TEST_ORG_UNIT_ID,
+      threadId: '',
+      providerLegId: null,
+      providerMessageId: null,
+      providerEventId: null,
+      providerNumberE164: '+12605550199',
+    });
+    expect(correlationLookupSpy).toHaveBeenCalledWith({
+      providerName: 'telnyx',
+      providerLegId: null,
+      providerMessageId: null,
+      tenantId: null,
+      db: { mocked: 'db' },
+    });
+    expect(numberMappingSpy).toHaveBeenCalledWith({
+      tenantId: TEST_TENANT_ID,
+      twilioNumberE164: '+12605550199',
+    });
+  });
+
+  it('preserves ambiguous provider identifier failures instead of falling back to number mapping', async () => {
+    const correlationLookupSpy = jest.spyOn(
+      providerCorrelationMappingsModule,
+      'resolveConnectShyftProviderCorrelationByIdentifiers',
+    ).mockResolvedValue({
+      ok: false,
+      reason: 'ambiguous',
+    } as any);
+    const numberMappingSpy = jest.spyOn(
+      connectShyftNumberMappingServiceAsync,
+      'resolveRoutingMappingByNumber',
+    ).mockResolvedValue({
+      status: 'found',
+      mapping: {
+        mappingId: 'mapping-connectshyft-c9-ambiguous',
+        tenantId: TEST_TENANT_ID,
+        orgUnitId: TEST_ORG_UNIT_ID,
+        twilioNumberE164: '+12605550199',
+        label: 'Main',
+        isActive: true,
+        createdAtUtc: '2026-03-26T00:00:00.000Z',
+        updatedAtUtc: '2026-03-26T00:00:00.000Z',
+      },
+    } as any);
+
+    const correlation = await resolveInboundWebhookCorrelation({
+      body: {
+        eventType: 'MessageReceived',
+      },
+      channelHint: 'sms',
+      providerName: 'telnyx',
+      providerCorrelation: {
+        providerLegId: null,
+        providerMessageId: 'provider-message-c9-ambiguous',
+        providerEventId: null,
+        providerNumber: '+12605550199',
+      },
+      tenantIdHint: TEST_TENANT_ID,
+    });
+
+    expect(correlation).toEqual({
+      ok: false,
+      code: 'CONNECTSHYFT_WEBHOOK_CORRELATION_AMBIGUOUS',
+      message: 'Inbound webhook correlation is ambiguous across provider identifiers.',
+      reason: 'ambiguous',
+      providerLegId: null,
+      providerMessageId: 'provider-message-c9-ambiguous',
+      providerEventId: null,
+      providerNumberE164: '+12605550199',
+    });
+    expect(correlationLookupSpy).toHaveBeenCalledWith({
+      providerName: 'telnyx',
+      providerLegId: null,
+      providerMessageId: 'provider-message-c9-ambiguous',
+      tenantId: null,
+      db: { mocked: 'db' },
+    });
+    expect(numberMappingSpy).not.toHaveBeenCalled();
   });
 
   it('stays limited to prerequisite resolution and execution delegation without bridge or canonical side effects', async () => {
