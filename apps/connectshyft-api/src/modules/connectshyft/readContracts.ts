@@ -55,8 +55,12 @@ export type ConnectShyftThreadSummaryRecord = {
   lastActivityAtUtc: string;
   lastInboundCsNumberId: string;
   last_inbound_cs_number_id: string;
+  lastInboundProviderNumberE164: string | null;
+  last_inbound_provider_number_e164: string | null;
   preferredOutboundCsNumberId: string;
   preferred_outbound_cs_number_id: string;
+  preferredOutboundProviderNumberE164: string | null;
+  preferred_outbound_provider_number_e164: string | null;
   preferredOutboundContext: {
     csNumberId: string;
     label: string;
@@ -106,6 +110,8 @@ type ConnectShyftThreadSeed = {
   lastActivityAtUtc: string;
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
+  lastInboundProviderNumberE164?: string | null;
+  preferredOutboundProviderNumberE164?: string | null;
   preferredOutboundLabel: string;
   callIndicator?: boolean;
   voicemailIndicator: boolean;
@@ -126,6 +132,8 @@ type ConnectShyftThreadDbRow = {
   last_activity_at_utc: string | Date;
   last_inbound_cs_number_id?: string | null;
   preferred_outbound_cs_number_id?: string | null;
+  last_inbound_provider_number_e164?: string | null;
+  preferred_outbound_provider_number_e164?: string | null;
   preferred_outbound_label?: string | null;
   outbound_label?: string | null;
   voicemail_waiting?: boolean | number | string | null;
@@ -912,6 +920,11 @@ const normalizeThreadSenderAlignmentForReadContracts = (value: unknown): string 
   return `+1260555${suffix}`;
 };
 
+const normalizeE164OrNull = (value: unknown): string | null => {
+  const normalized = normalizeString(value);
+  return normalized.startsWith('+') && /^\+[1-9]\d{1,14}$/.test(normalized) ? normalized : null;
+};
+
 const buildThreadDisplayRecord = (input: {
   state: ConnectShyftThreadState;
   summary: string;
@@ -1048,6 +1061,12 @@ const toSummaryRecord = (
   const preferredOutboundCsNumberId = normalizeThreadSenderAlignmentForReadContracts(
     seed.preferredOutboundCsNumberId,
   );
+  const lastInboundProviderNumberE164 = normalizeE164OrNull(
+    seed.lastInboundProviderNumberE164 ?? seed.lastInboundCsNumberId,
+  );
+  const preferredOutboundProviderNumberE164 = normalizeE164OrNull(
+    seed.preferredOutboundProviderNumberE164 ?? seed.preferredOutboundCsNumberId,
+  );
   return {
     threadId: seed.threadId,
     neighborId: normalizeString(seed.neighborId) || null,
@@ -1068,8 +1087,12 @@ const toSummaryRecord = (
     lastActivityAtUtc: seed.lastActivityAtUtc,
     lastInboundCsNumberId,
     last_inbound_cs_number_id: lastInboundCsNumberId,
+    lastInboundProviderNumberE164,
+    last_inbound_provider_number_e164: lastInboundProviderNumberE164,
     preferredOutboundCsNumberId,
     preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
+    preferredOutboundProviderNumberE164,
+    preferred_outbound_provider_number_e164: preferredOutboundProviderNumberE164,
     preferredOutboundContext: {
       csNumberId: preferredOutboundCsNumberId,
       label: seed.preferredOutboundLabel,
@@ -1258,6 +1281,8 @@ const resolveDbSelectableColumns = (
     'new_unread',
     'last_inbound_cs_number_id',
     'preferred_outbound_cs_number_id',
+    'last_inbound_provider_number_e164',
+    'preferred_outbound_provider_number_e164',
     'preferred_outbound_label',
     'outbound_label',
     'voicemail_waiting',
@@ -1408,15 +1433,20 @@ const mapDbRowToSummary = (
     isNewUnread,
   });
 
-  const preferredOutboundCsNumberId = normalizeString(
+  const canonicalPreferredOutbound = normalizeE164OrNull(
+    row.preferred_outbound_provider_number_e164,
+  ) || normalizeE164OrNull(row.preferred_outbound_cs_number_id);
+  const canonicalLastInbound = normalizeE164OrNull(row.last_inbound_provider_number_e164)
+    || normalizeE164OrNull(row.last_inbound_cs_number_id);
+  const compatibilityPreferredOutbound = normalizeThreadSenderAlignmentForReadContracts(
     row.preferred_outbound_cs_number_id,
   );
-  const normalizedPreferredOutboundCsNumberId = normalizeThreadSenderAlignmentForReadContracts(
-    preferredOutboundCsNumberId,
-  );
-  const normalizedLastInboundCsNumberId = normalizeThreadSenderAlignmentForReadContracts(
+  const compatibilityLastInbound = normalizeThreadSenderAlignmentForReadContracts(
     row.last_inbound_cs_number_id,
   );
+  const normalizedPreferredOutboundCsNumberId =
+    canonicalPreferredOutbound || compatibilityPreferredOutbound;
+  const normalizedLastInboundCsNumberId = canonicalLastInbound || compatibilityLastInbound;
   const preferredOutboundLabel = normalizeString(
     row.preferred_outbound_label ?? row.outbound_label,
   );
@@ -1456,8 +1486,12 @@ const mapDbRowToSummary = (
     lastActivityAtUtc: normalizeUtcTimestamp(row.last_activity_at_utc),
     lastInboundCsNumberId: normalizedLastInboundCsNumberId,
     last_inbound_cs_number_id: normalizedLastInboundCsNumberId,
+    lastInboundProviderNumberE164: canonicalLastInbound,
+    last_inbound_provider_number_e164: canonicalLastInbound,
     preferredOutboundCsNumberId: normalizedPreferredOutboundCsNumberId,
     preferred_outbound_cs_number_id: normalizedPreferredOutboundCsNumberId,
+    preferredOutboundProviderNumberE164: canonicalPreferredOutbound,
+    preferred_outbound_provider_number_e164: canonicalPreferredOutbound,
     preferredOutboundContext: {
       csNumberId: normalizedPreferredOutboundCsNumberId,
       label: preferredOutboundLabel,

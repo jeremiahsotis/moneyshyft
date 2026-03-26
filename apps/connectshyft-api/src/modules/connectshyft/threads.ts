@@ -19,6 +19,7 @@ const MAX_ESCALATION_BASELINE_HOURS = 24;
 const MAX_ESCALATION_STAGE = 3;
 const HOUR_MS = 60 * 60 * 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const E164_PROVIDER_NUMBER_PATTERN = /^\+[1-9]\d{1,14}$/;
 
 export type ConnectShyftThreadState = (typeof CONNECTSHYFT_CANONICAL_THREAD_STATES)[number];
 export type ConnectShyftLifecycleAction = 'claim' | 'takeover' | 'close';
@@ -46,6 +47,8 @@ export type ConnectShyftThread = {
   state: ConnectShyftThreadState;
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
+  lastInboundProviderNumberE164?: string | null;
+  preferredOutboundProviderNumberE164?: string | null;
   claimedByUserId: string | null;
   claimedAtUtc: string | null;
   closedByUserId: string | null;
@@ -73,6 +76,8 @@ type ThreadStoreEnsureInput = {
   state: ConnectShyftThreadState;
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
+  lastInboundProviderNumberE164?: string | null;
+  preferredOutboundProviderNumberE164?: string | null;
   threadId?: string;
   actorUserId?: string | null;
   nextEvaluationAtUtc?: string | null;
@@ -180,6 +185,8 @@ export type ConnectShyftEnsureThreadCommand = {
   forcedState?: string | null;
   lastInboundCsNumberId: string;
   preferredOutboundCsNumberId: string;
+  lastInboundProviderNumberE164?: string | null;
+  preferredOutboundProviderNumberE164?: string | null;
   threadId?: string;
   actorUserId?: string | null;
   nextEvaluationAtUtc?: string;
@@ -292,6 +299,8 @@ type DbThreadRow = {
   next_evaluation_at_utc: string | Date | null;
   last_inbound_cs_number_id: string;
   preferred_outbound_cs_number_id: string;
+  last_inbound_provider_number_e164?: string | null;
+  preferred_outbound_provider_number_e164?: string | null;
   claimed_by_user_id: string | null;
   claimed_at_utc: string | Date | null;
   closed_by_user_id: string | null;
@@ -309,6 +318,33 @@ const normalizeString = (value: unknown): string => {
 };
 
 const normalizeThreadSenderAlignmentValue = (value: unknown): string => normalizeString(value);
+
+const normalizeE164OrNull = (value: unknown): string | null => {
+  const normalized = normalizeString(value);
+  if (!normalized || !E164_PROVIDER_NUMBER_PATTERN.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
+};
+
+const resolveNextCanonicalThreadProviderNumber = (input: {
+  existingValue?: unknown;
+  canonicalValue?: unknown;
+  compatibilityValue: unknown;
+}): string | null => {
+  const explicitCanonical = normalizeString(input.canonicalValue);
+  if (explicitCanonical) {
+    const normalizedCanonical = normalizeE164OrNull(explicitCanonical);
+    if (!normalizedCanonical) {
+      throw new TypeError('ConnectShyft canonical provider numbers must use E.164 format.');
+    }
+
+    return normalizedCanonical;
+  }
+
+  return normalizeE164OrNull(input.compatibilityValue) || normalizeE164OrNull(input.existingValue);
+};
 
 const nowIsoUtc = (): string => new Date().toISOString();
 
@@ -559,29 +595,47 @@ const transitionLifecycleFields = (
   };
 };
 
-const mapDbRowToThread = (row: DbThreadRow): ConnectShyftThread => ({
-  threadId: row.id,
-  tenantId: row.tenant_id,
-  orgUnitId: row.org_unit_id,
-  neighborId: row.neighbor_id,
-  personId: row.person_id,
-  originPersonId: normalizeString(row.origin_person_id) || null,
-  activityId: row.activity_id,
-  source: row.source,
-  state: row.state,
-  lastInboundCsNumberId: normalizeThreadSenderAlignmentValue(row.last_inbound_cs_number_id),
-  preferredOutboundCsNumberId: normalizeThreadSenderAlignmentValue(row.preferred_outbound_cs_number_id),
-  claimedByUserId: row.claimed_by_user_id,
-  claimedAtUtc: toNullableIsoUtc(row.claimed_at_utc),
-  closedByUserId: row.closed_by_user_id,
-  closedAtUtc: toNullableIsoUtc(row.closed_at_utc),
-  createdAtUtc: toIsoUtc(row.created_at_utc),
-  updatedAtUtc: toIsoUtc(row.updated_at_utc),
-  escalation: {
-    stage: row.escalation_stage,
-    nextEvaluationAtUtc: toNullableIsoUtc(row.next_evaluation_at_utc),
-  },
-});
+const mapDbRowToThread = (row: DbThreadRow): ConnectShyftThread => {
+  const canonicalPreferredOutbound = normalizeE164OrNull(
+    row.preferred_outbound_provider_number_e164,
+  );
+  const canonicalLastInbound = normalizeE164OrNull(row.last_inbound_provider_number_e164);
+  const compatibilityPreferredOutbound = normalizeThreadSenderAlignmentValue(
+    row.preferred_outbound_cs_number_id,
+  );
+  const compatibilityLastInbound = normalizeThreadSenderAlignmentValue(row.last_inbound_cs_number_id);
+  const resolvedPreferredOutboundProviderNumberE164 = canonicalPreferredOutbound
+    || normalizeE164OrNull(compatibilityPreferredOutbound);
+  const resolvedLastInboundProviderNumberE164 = canonicalLastInbound
+    || normalizeE164OrNull(compatibilityLastInbound);
+
+  return {
+    threadId: row.id,
+    tenantId: row.tenant_id,
+    orgUnitId: row.org_unit_id,
+    neighborId: row.neighbor_id,
+    personId: row.person_id,
+    originPersonId: normalizeString(row.origin_person_id) || null,
+    activityId: row.activity_id,
+    source: row.source,
+    state: row.state,
+    lastInboundCsNumberId: resolvedLastInboundProviderNumberE164 || compatibilityLastInbound,
+    preferredOutboundCsNumberId:
+      resolvedPreferredOutboundProviderNumberE164 || compatibilityPreferredOutbound,
+    lastInboundProviderNumberE164: resolvedLastInboundProviderNumberE164,
+    preferredOutboundProviderNumberE164: resolvedPreferredOutboundProviderNumberE164,
+    claimedByUserId: row.claimed_by_user_id,
+    claimedAtUtc: toNullableIsoUtc(row.claimed_at_utc),
+    closedByUserId: row.closed_by_user_id,
+    closedAtUtc: toNullableIsoUtc(row.closed_at_utc),
+    createdAtUtc: toIsoUtc(row.created_at_utc),
+    updatedAtUtc: toIsoUtc(row.updated_at_utc),
+    escalation: {
+      stage: row.escalation_stage,
+      nextEvaluationAtUtc: toNullableIsoUtc(row.next_evaluation_at_utc),
+    },
+  };
+};
 
 const hasThreadViewCapability = (actorRoles: Array<string | null | undefined>): boolean => {
   return hasCapability(actorRoles, CAPABILITIES.ORG_UNIT_THREAD_VIEW)
@@ -792,6 +846,16 @@ export class InMemoryConnectShyftThreadStore {
           source: input.source,
           lastInboundCsNumberId,
           preferredOutboundCsNumberId,
+          lastInboundProviderNumberE164: resolveNextCanonicalThreadProviderNumber({
+            existingValue: existing.lastInboundProviderNumberE164,
+            canonicalValue: input.lastInboundProviderNumberE164,
+            compatibilityValue: lastInboundCsNumberId,
+          }),
+          preferredOutboundProviderNumberE164: resolveNextCanonicalThreadProviderNumber({
+            existingValue: existing.preferredOutboundProviderNumberE164,
+            canonicalValue: input.preferredOutboundProviderNumberE164,
+            compatibilityValue: preferredOutboundCsNumberId,
+          }),
           updatedAtUtc: now,
           escalation: {
             ...existing.escalation,
@@ -832,6 +896,14 @@ export class InMemoryConnectShyftThreadStore {
       state: input.state,
       lastInboundCsNumberId,
       preferredOutboundCsNumberId,
+      lastInboundProviderNumberE164: resolveNextCanonicalThreadProviderNumber({
+        canonicalValue: input.lastInboundProviderNumberE164,
+        compatibilityValue: lastInboundCsNumberId,
+      }),
+      preferredOutboundProviderNumberE164: resolveNextCanonicalThreadProviderNumber({
+        canonicalValue: input.preferredOutboundProviderNumberE164,
+        compatibilityValue: preferredOutboundCsNumberId,
+      }),
       claimedByUserId: lifecycle.claimedByUserId,
       claimedAtUtc: lifecycle.claimedAtUtc,
       closedByUserId: lifecycle.closedByUserId,
@@ -1055,6 +1127,8 @@ export class KnexConnectShyftThreadStore {
       'next_evaluation_at_utc',
       'last_inbound_cs_number_id',
       'preferred_outbound_cs_number_id',
+      'last_inbound_provider_number_e164',
+      'preferred_outbound_provider_number_e164',
       'claimed_by_user_id',
       'claimed_at_utc',
       'closed_by_user_id',
@@ -1084,11 +1158,23 @@ export class KnexConnectShyftThreadStore {
           .first<DbThreadRow>(this.threadColumns());
 
         if (existing) {
+          const lastInboundProviderNumberE164 = resolveNextCanonicalThreadProviderNumber({
+            existingValue: existing.last_inbound_provider_number_e164,
+            canonicalValue: input.lastInboundProviderNumberE164,
+            compatibilityValue: lastInboundCsNumberId,
+          });
+          const preferredOutboundProviderNumberE164 = resolveNextCanonicalThreadProviderNumber({
+            existingValue: existing.preferred_outbound_provider_number_e164,
+            canonicalValue: input.preferredOutboundProviderNumberE164,
+            compatibilityValue: preferredOutboundCsNumberId,
+          });
           const updatePayload: Record<string, unknown> = {
             source: input.source,
             person_id: input.personId,
             last_inbound_cs_number_id: lastInboundCsNumberId,
             preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
+            last_inbound_provider_number_e164: lastInboundProviderNumberE164,
+            preferred_outbound_provider_number_e164: preferredOutboundProviderNumberE164,
             updated_by_user_id: normalizedActorUserId,
             updated_at_utc: trx.fn.now(),
           };
@@ -1121,6 +1207,14 @@ export class KnexConnectShyftThreadStore {
           } as ThreadPersistenceEnsureResult;
         }
 
+        const lastInboundProviderNumberE164 = resolveNextCanonicalThreadProviderNumber({
+          canonicalValue: input.lastInboundProviderNumberE164,
+          compatibilityValue: lastInboundCsNumberId,
+        });
+        const preferredOutboundProviderNumberE164 = resolveNextCanonicalThreadProviderNumber({
+          canonicalValue: input.preferredOutboundProviderNumberE164,
+          compatibilityValue: preferredOutboundCsNumberId,
+        });
         const insertPayload: Record<string, unknown> = {
           id: normalizeUuid(input.threadId) || randomUUID(),
           tenant_id: input.tenantId,
@@ -1135,6 +1229,8 @@ export class KnexConnectShyftThreadStore {
           next_evaluation_at_utc: input.nextEvaluationAtUtc ?? trx.fn.now(),
           last_inbound_cs_number_id: lastInboundCsNumberId,
           preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
+          last_inbound_provider_number_e164: lastInboundProviderNumberE164,
+          preferred_outbound_provider_number_e164: preferredOutboundProviderNumberE164,
           created_by_user_id: normalizedActorUserId || null,
           updated_by_user_id: normalizedActorUserId || null,
           created_at_utc: trx.fn.now(),
@@ -1183,11 +1279,23 @@ export class KnexConnectShyftThreadStore {
             .first<DbThreadRow>(this.threadColumns());
 
           if (existing) {
+            const lastInboundProviderNumberE164 = resolveNextCanonicalThreadProviderNumber({
+              existingValue: existing.last_inbound_provider_number_e164,
+              canonicalValue: input.lastInboundProviderNumberE164,
+              compatibilityValue: lastInboundCsNumberId,
+            });
+            const preferredOutboundProviderNumberE164 = resolveNextCanonicalThreadProviderNumber({
+              existingValue: existing.preferred_outbound_provider_number_e164,
+              canonicalValue: input.preferredOutboundProviderNumberE164,
+              compatibilityValue: preferredOutboundCsNumberId,
+            });
             const updatePayload: Record<string, unknown> = {
               source: input.source,
               person_id: input.personId,
               last_inbound_cs_number_id: lastInboundCsNumberId,
               preferred_outbound_cs_number_id: preferredOutboundCsNumberId,
+              last_inbound_provider_number_e164: lastInboundProviderNumberE164,
+              preferred_outbound_provider_number_e164: preferredOutboundProviderNumberE164,
               updated_by_user_id: normalizedActorUserId,
               updated_at_utc: this.knexClient.fn.now(),
             };
@@ -1477,6 +1585,8 @@ export class ConnectShyftThreadService {
       state,
       lastInboundCsNumberId: normalizeString(input.lastInboundCsNumberId),
       preferredOutboundCsNumberId: normalizeString(input.preferredOutboundCsNumberId),
+      lastInboundProviderNumberE164: input.lastInboundProviderNumberE164,
+      preferredOutboundProviderNumberE164: input.preferredOutboundProviderNumberE164,
       threadId: input.threadId,
       actorUserId: input.actorUserId,
       nextEvaluationAtUtc:
@@ -1684,6 +1794,8 @@ export class AsyncConnectShyftThreadService {
         state,
         lastInboundCsNumberId: normalizeString(input.lastInboundCsNumberId),
         preferredOutboundCsNumberId: normalizeString(input.preferredOutboundCsNumberId),
+        lastInboundProviderNumberE164: input.lastInboundProviderNumberE164,
+        preferredOutboundProviderNumberE164: input.preferredOutboundProviderNumberE164,
         threadId: input.threadId,
         actorUserId: input.actorUserId,
         nextEvaluationAtUtc:

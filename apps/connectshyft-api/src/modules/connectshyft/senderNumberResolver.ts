@@ -13,13 +13,15 @@ import {
 export type ConnectShyftSenderChannel = 'sms' | 'voice';
 
 type SenderAlignmentSource = 'preferred_outbound' | 'last_inbound';
+const LEGACY_THREAD_NUMBER_SENTINEL_PATTERN = /^cs-number(?:-[a-z0-9]+)*-\d+$/i;
+const E164_PROVIDER_NUMBER_PATTERN = /^\+[1-9]\d{1,14}$/;
 
 type SenderAlignmentMetadata = {
   threadId: string;
   tenantId: string;
   orgUnitId: string;
-  preferredOutboundCsNumberId: string | null;
-  lastInboundCsNumberId: string | null;
+  preferredOutboundProviderNumberE164: string | null;
+  lastInboundProviderNumberE164: string | null;
   alignedFrom: SenderAlignmentSource | null;
   candidateProviderNumberE164: string | null;
 };
@@ -79,7 +81,8 @@ export type ResolveSenderNumberResult =
 
 type ResolveSenderNumberDependencies = {
   loadThread?: (input: ResolveSenderNumberInput) => Promise<ConnectShyftThread | null>;
-  numberMappingService?: Pick<AsyncConnectShyftNumberMappingService, 'resolveRoutingMappingByNumber'>;
+  numberMappingService?: Pick<AsyncConnectShyftNumberMappingService, 'resolveRoutingMappingByNumber'>
+    & Partial<Pick<AsyncConnectShyftNumberMappingService, 'listMappings'>>;
 };
 
 const normalizeString = (value: unknown): string => {
@@ -99,17 +102,31 @@ const buildAlignmentMetadata = (input: {
   threadId: input.request.threadId,
   tenantId: input.request.tenantId,
   orgUnitId: input.request.orgUnitId,
-  preferredOutboundCsNumberId: normalizeString(input.thread?.preferredOutboundCsNumberId) || null,
-  lastInboundCsNumberId: normalizeString(input.thread?.lastInboundCsNumberId) || null,
+  preferredOutboundProviderNumberE164:
+    normalizeString(input.thread?.preferredOutboundProviderNumberE164) || null,
+  lastInboundProviderNumberE164:
+    normalizeString(input.thread?.lastInboundProviderNumberE164) || null,
   alignedFrom: input.alignedFrom,
   candidateProviderNumberE164: input.candidateProviderNumberE164,
 });
 
-const resolveAlignedThreadNumber = (
+const normalizeE164OrNull = (value: unknown): string | null => {
+  const normalized = normalizeString(value);
+  if (!normalized || !E164_PROVIDER_NUMBER_PATTERN.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
+};
+
+const isLegacyThreadSenderSentinel = (value: string): boolean =>
+  LEGACY_THREAD_NUMBER_SENTINEL_PATTERN.test(value);
+
+const resolveStoredCanonicalThreadNumber = (
   thread: ConnectShyftThread,
 ): { alignedFrom: SenderAlignmentSource | null; providerNumberE164: string | null; invalid: boolean } => {
-  const preferredOutbound = normalizeString(thread.preferredOutboundCsNumberId);
-  const lastInbound = normalizeString(thread.lastInboundCsNumberId);
+  const preferredOutbound = normalizeE164OrNull(thread.preferredOutboundProviderNumberE164);
+  const lastInbound = normalizeE164OrNull(thread.lastInboundProviderNumberE164);
 
   if (preferredOutbound && lastInbound && preferredOutbound !== lastInbound) {
     return {
@@ -139,6 +156,73 @@ const resolveAlignedThreadNumber = (
     alignedFrom: null,
     providerNumberE164: null,
     invalid: false,
+  };
+};
+
+const resolveCompatibilityThreadNumber = async (input: {
+  request: ResolveSenderNumberInput;
+  thread: ConnectShyftThread;
+  numberMappingService: ResolveSenderNumberDependencies['numberMappingService'];
+}): Promise<{ alignedFrom: SenderAlignmentSource | null; providerNumberE164: string | null; invalid: boolean }> => {
+  const preferredOutbound = normalizeString(input.thread.preferredOutboundCsNumberId);
+  const lastInbound = normalizeString(input.thread.lastInboundCsNumberId);
+  const preferredOutboundE164 = normalizeE164OrNull(preferredOutbound);
+  const lastInboundE164 = normalizeE164OrNull(lastInbound);
+
+  if (preferredOutboundE164 && lastInboundE164 && preferredOutboundE164 !== lastInboundE164) {
+    return {
+      alignedFrom: 'preferred_outbound',
+      providerNumberE164: preferredOutboundE164,
+      invalid: true,
+    };
+  }
+
+  if (preferredOutboundE164) {
+    return {
+      alignedFrom: 'preferred_outbound',
+      providerNumberE164: preferredOutboundE164,
+      invalid: false,
+    };
+  }
+
+  if (lastInboundE164) {
+    return {
+      alignedFrom: 'last_inbound',
+      providerNumberE164: lastInboundE164,
+      invalid: false,
+    };
+  }
+
+  const alignedFrom = preferredOutbound ? 'preferred_outbound' : lastInbound ? 'last_inbound' : null;
+  const legacySentinelPresent = isLegacyThreadSenderSentinel(preferredOutbound)
+    || isLegacyThreadSenderSentinel(lastInbound);
+
+  if (
+    legacySentinelPresent
+    && input.numberMappingService
+    && typeof input.numberMappingService.listMappings === 'function'
+  ) {
+    const activeMappings = (await input.numberMappingService.listMappings(
+      input.request.tenantId,
+      input.request.orgUnitId,
+    ))
+      .filter((mapping) => mapping.isActive)
+      .map((mapping) => normalizeE164OrNull(mapping.twilioNumberE164))
+      .filter((mapping): mapping is string => Boolean(mapping));
+
+    if (activeMappings.length === 1) {
+      return {
+        alignedFrom,
+        providerNumberE164: activeMappings[0],
+        invalid: false,
+      };
+    }
+  }
+
+  return {
+    alignedFrom,
+    providerNumberE164: preferredOutbound || lastInbound || null,
+    invalid: legacySentinelPresent,
   };
 };
 
@@ -207,7 +291,14 @@ export const resolveSenderNumber = async (
     });
   }
 
-  const aligned = resolveAlignedThreadNumber(thread);
+  const storedCanonicalAlignment = resolveStoredCanonicalThreadNumber(thread);
+  const aligned = storedCanonicalAlignment.providerNumberE164 || storedCanonicalAlignment.invalid
+    ? storedCanonicalAlignment
+    : await resolveCompatibilityThreadNumber({
+      request: input,
+      thread,
+      numberMappingService,
+    });
   if (!aligned.providerNumberE164) {
     return buildRefusal({
       request: input,
