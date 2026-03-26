@@ -38,7 +38,11 @@ export type ResolveConnectShyftOperatorDestinationInput = {
   claimedByUserId?: string | null;
 };
 
-type ConnectShyftOperatorDestinationStore = {
+export type ResolveOperatorDestinationInput = ResolveConnectShyftOperatorDestinationInput;
+
+export type ResolveOperatorDestinationResult = ConnectShyftOperatorDestinationResolution;
+
+export type OperatorDestinationStore = {
   getUserPhone(input: {
     tenantId: string;
     userId: string;
@@ -46,6 +50,9 @@ type ConnectShyftOperatorDestinationStore = {
     userId: string;
     phoneNumber: string | null;
   } | null>;
+};
+
+type ConnectShyftOperatorDestinationStore = OperatorDestinationStore & {
   getOrgUnitDefaultPhone(input: {
     tenantId: string;
     orgUnitId: string;
@@ -83,10 +90,9 @@ type ResolveNormalizedPhoneResult =
     value: string;
   };
 
-type ConnectShyftUserPhoneRow = {
-  id: string;
-  household_id: string | null;
-  phone_e164: string | null;
+type ConnectShyftOperatorCallbackPhoneRow = {
+  user_id: string;
+  callback_number_e164: string | null;
 };
 
 const normalizeString = (value: unknown): string => {
@@ -242,27 +248,30 @@ implements ConnectShyftOperatorDestinationStore {
     this.escalationConfigStore = new KnexConnectShyftEscalationConfigStore(resolveDb);
   }
 
-  private usersTable() {
-    return this.resolveDb().table<ConnectShyftUserPhoneRow>('users');
+  private operatorCallbackNumbersTable() {
+    return this.resolveDb()
+      .withSchema('connectshyft')
+      .table<ConnectShyftOperatorCallbackPhoneRow>('cs_operator_callback_numbers');
   }
 
   async getUserPhone(input: {
     tenantId: string;
     userId: string;
   }): Promise<{ userId: string; phoneNumber: string | null } | null> {
-    const row = await this.usersTable()
+    const row = await this.operatorCallbackNumbersTable()
       .where({
-        id: input.userId,
+        tenant_id: input.tenantId,
+        user_id: input.userId,
       })
-      .first(['id', 'phone_e164']);
+      .first(['user_id', 'callback_number_e164']);
 
     if (!row) {
       return null;
     }
 
     return {
-      userId: row.id,
-      phoneNumber: normalizeString(row.phone_e164) || null,
+      userId: row.user_id,
+      phoneNumber: normalizeString(row.callback_number_e164) || null,
     };
   }
 
@@ -459,19 +468,50 @@ export class ConnectShyftTelephonyOperatorPhoneResolverService {
   }
 }
 
+const connectShyftOperatorDestinationStore =
+  new KnexConnectShyftOperatorDestinationStore(() => db);
+
 const connectShyftOperatorDestinationResolverService =
   new ConnectShyftOperatorDestinationResolverService(
-    new KnexConnectShyftOperatorDestinationStore(() => db),
+    connectShyftOperatorDestinationStore,
   );
 
 const connectShyftTelephonyOperatorPhoneResolverService =
   new ConnectShyftTelephonyOperatorPhoneResolverService(
-    new KnexConnectShyftOperatorDestinationStore(() => db),
+    connectShyftOperatorDestinationStore,
   );
 
+export type ResolveOperatorDestinationDependencies = {
+  service?: Pick<ConnectShyftOperatorDestinationResolverService, 'resolve'>;
+  store?: OperatorDestinationStore;
+  getOrgUnitDefaultPhone?: ConnectShyftOperatorDestinationStore['getOrgUnitDefaultPhone'];
+};
+
 export async function resolveOperatorDestination(
-  input: ResolveConnectShyftOperatorDestinationInput,
-): Promise<ConnectShyftOperatorDestinationResolution> {
+  input: ResolveOperatorDestinationInput,
+  overrides?: ResolveOperatorDestinationDependencies,
+): Promise<ResolveOperatorDestinationResult> {
+  if (overrides?.service) {
+    return overrides.service.resolve(input);
+  }
+
+  if (overrides?.store || overrides?.getOrgUnitDefaultPhone) {
+    const store: ConnectShyftOperatorDestinationStore = {
+      getUserPhone: async (dependencyInput) => (
+        overrides.store
+          ? overrides.store.getUserPhone(dependencyInput)
+          : connectShyftOperatorDestinationStore.getUserPhone(dependencyInput)
+      ),
+      getOrgUnitDefaultPhone: async (dependencyInput) => (
+        overrides.getOrgUnitDefaultPhone
+          ? overrides.getOrgUnitDefaultPhone(dependencyInput)
+          : connectShyftOperatorDestinationStore.getOrgUnitDefaultPhone(dependencyInput)
+      ),
+    };
+
+    return new ConnectShyftOperatorDestinationResolverService(store).resolve(input);
+  }
+
   return connectShyftOperatorDestinationResolverService.resolve(input);
 }
 

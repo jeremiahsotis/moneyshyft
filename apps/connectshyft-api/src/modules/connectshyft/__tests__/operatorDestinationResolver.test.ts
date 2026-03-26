@@ -3,6 +3,7 @@ import {
   ConnectShyftTelephonyOperatorPhoneResolverService,
   InMemoryConnectShyftOperatorDestinationStore,
   KnexConnectShyftOperatorDestinationStore,
+  resolveOperatorDestination,
 } from '../operatorDestinationResolver';
 
 describe('connectshyft operatorDestinationResolver', () => {
@@ -14,7 +15,7 @@ describe('connectshyft operatorDestinationResolver', () => {
     service = new ConnectShyftOperatorDestinationResolverService(store);
   });
 
-  it('resolves the claimed thread operator first', async () => {
+  it('resolves the claimed thread operator callback number first', async () => {
     store.seedUserPhone({
       tenantId: 'tenant-connectshyft-f1',
       userId: 'user-connectshyft-claimed',
@@ -44,7 +45,7 @@ describe('connectshyft operatorDestinationResolver', () => {
     });
   });
 
-  it('falls back to the actor user when the claimed operator has no stored phone', async () => {
+  it('falls back to the actor user callback number when the claimed operator has no stored callback', async () => {
     store.seedUserPhone({
       tenantId: 'tenant-connectshyft-f1',
       userId: 'user-connectshyft-claimed',
@@ -69,7 +70,7 @@ describe('connectshyft operatorDestinationResolver', () => {
     });
   });
 
-  it('falls back to the org-unit default when no user phone resolves', async () => {
+  it('falls back to the org-unit default when no callback number resolves', async () => {
     store.seedUserPhone({
       tenantId: 'tenant-connectshyft-f1',
       userId: 'user-connectshyft-claimed',
@@ -151,6 +152,27 @@ describe('connectshyft operatorDestinationResolver', () => {
       actorUserId: 'user-connectshyft-actor',
     })).resolves.toEqual({
       phoneNumber: '+12605550123',
+      source: 'actor_user',
+      userId: 'user-connectshyft-actor',
+      orgUnitId: 'org-connectshyft-f1-east',
+    });
+  });
+
+  it('supports store overrides through resolveOperatorDestination()', async () => {
+    store.seedUserPhone({
+      tenantId: 'tenant-connectshyft-f1',
+      userId: 'user-connectshyft-actor',
+      phoneNumber: '+12605550999',
+    });
+
+    await expect(resolveOperatorDestination({
+      tenantId: 'tenant-connectshyft-f1',
+      orgUnitId: 'org-connectshyft-f1-east',
+      actorUserId: 'user-connectshyft-actor',
+    }, {
+      store,
+    })).resolves.toEqual({
+      phoneNumber: '+12605550999',
       source: 'actor_user',
       userId: 'user-connectshyft-actor',
       orgUnitId: 'org-connectshyft-f1-east',
@@ -257,23 +279,26 @@ describe('KnexConnectShyftOperatorDestinationStore', () => {
     const table = jest.fn(() => ({
       where,
     }));
-    const knex = jest.fn(() => ({
+    const withSchema = jest.fn(() => ({
       table,
+    }));
+    const knex = jest.fn(() => ({
+      withSchema,
     }));
 
     return {
       knex: knex as any,
+      withSchema,
       table,
       where,
       first,
     };
   };
 
-  it('reads user phones by id without household scoping', async () => {
-    const { knex, table, where, first } = buildKnexMock({
-      id: 'user-connectshyft-alpha-operator',
-      household_id: 'different-household-row',
-      phone_e164: '+12605550123',
+  it('reads callback numbers from connectshyft.cs_operator_callback_numbers by tenant and user', async () => {
+    const { knex, withSchema, table, where, first } = buildKnexMock({
+      user_id: 'user-connectshyft-alpha-operator',
+      callback_number_e164: '+12605550123',
     });
     const store = new KnexConnectShyftOperatorDestinationStore(knex);
 
@@ -285,10 +310,12 @@ describe('KnexConnectShyftOperatorDestinationStore', () => {
       phoneNumber: '+12605550123',
     });
 
-    expect(table).toHaveBeenCalledWith('users');
+    expect(withSchema).toHaveBeenCalledWith('connectshyft');
+    expect(table).toHaveBeenCalledWith('cs_operator_callback_numbers');
     expect(where).toHaveBeenCalledWith({
-      id: 'user-connectshyft-alpha-operator',
+      tenant_id: 'tenant-connectshyft-alpha',
+      user_id: 'user-connectshyft-alpha-operator',
     });
-    expect(first).toHaveBeenCalledWith(['id', 'phone_e164']);
+    expect(first).toHaveBeenCalledWith(['user_id', 'callback_number_e164']);
   });
 });
