@@ -222,7 +222,11 @@ export const resolveInboundWebhookCorrelation = async (
     tenantId: tenantId || null,
     db: platformDb,
   });
-  if (!fallback.ok && providerNumberE164) {
+  const shouldAttemptNumberMappingFallback = !fallback.ok
+    && Boolean(providerNumberE164)
+    && (fallback.reason === 'missing-identifiers' || fallback.reason === 'not-found');
+
+  if (shouldAttemptNumberMappingFallback && providerNumberE164) {
     try {
       const numberMapping = await connectShyftNumberMappingServiceAsync.resolveRoutingMappingByNumber({
         tenantId: numberMappingTenantScope,

@@ -608,6 +608,98 @@ describe('connectshyft inbound sms webhook route characterization', () => {
     }
   });
 
+  it('continues first-contact inbound SMS when only the mapped provider number is available', async () => {
+    const app = buildApp();
+    const { canonicalEventSpy, ensureThreadSpy, restore } = mockInboundSmsPersistence({
+      ensuredThreadId: 'thread-sms-characterization-first-contact-2016',
+      ensuredNeighborId: 'neighbor-connectshyft-f1-2016',
+      ensuredPersonId: 'person-connectshyft-f1-2016',
+    });
+    const createNeighborSpy = jest.spyOn(neighborsModule, 'createNeighborFromInbound')
+      .mockResolvedValue({
+        ok: true,
+        code: 'CONNECTSHYFT_NEIGHBOR_CREATED',
+        httpStatus: 201,
+        data: {
+          neighbor: {
+            neighborId: 'neighbor-connectshyft-f1-2016',
+          },
+        },
+      } as any);
+    resolveInboundIdentitySpy.mockResolvedValueOnce(buildIdentityAttachment({
+      personId: 'person-connectshyft-f1-2016',
+      selectedCandidatePersonId: 'person-connectshyft-f1-2016',
+      contactPointId: 'contact-point-connectshyft-f1-2016',
+      contactPointEventId: 'contact-point-event-connectshyft-f1-2016',
+    }) as any);
+
+    try {
+      const response = await request(app)
+        .post('/api/v1/connectshyft/webhooks/sms')
+        .set(buildSmsHeaders())
+        .send(buildInboundSmsBody({
+          tenantId: undefined,
+          orgUnitId: undefined,
+          threadId: undefined,
+          sid: undefined,
+          providerEventId: undefined,
+          providerMessageId: undefined,
+          from: '+12605552016',
+        }));
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        code: 'CONNECTSHYFT_WEBHOOK_ACCEPTED',
+        data: {
+          eventType: 'sms.inbound',
+          providerResolution: {
+            requestedProvider: 'telnyx',
+            resolvedProvider: 'telnyx',
+            deterministic: true,
+            adapterInvoked: true,
+          },
+          correlation: {
+            source: 'number_mapping',
+            deterministic: true,
+            threadId: 'thread-sms-characterization-first-contact-2016',
+            tenantId: TEST_TENANT_ID,
+            orgUnitId: TEST_ORG_UNIT_ID,
+            neighborId: 'neighbor-connectshyft-f1-2016',
+            providerLegId: null,
+            providerMessageId: null,
+            providerEventId: null,
+            providerNumberE164: TEST_PROVIDER_NUMBER,
+          },
+          replaySafe: {
+            duplicate: false,
+            suppressedDomainWrites: false,
+            dedupeKey: expect.stringMatching(/^payload:[a-f0-9]{64}\|event:sms\.inbound$/),
+          },
+          threadId: 'thread-sms-characterization-first-contact-2016',
+          thread: buildEnsuredThread({
+            threadId: 'thread-sms-characterization-first-contact-2016',
+            neighborId: 'neighbor-connectshyft-f1-2016',
+            personId: 'person-connectshyft-f1-2016',
+          }),
+        },
+      });
+      expect(createNeighborSpy).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: TEST_TENANT_ID,
+        orgUnitId: TEST_ORG_UNIT_ID,
+        phone: '+12605552016',
+      }));
+      expect(ensureThreadSpy).toHaveBeenCalledWith(expect.objectContaining({
+        neighborId: 'neighbor-connectshyft-f1-2016',
+        personId: 'person-connectshyft-f1-2016',
+      }));
+      expect(canonicalEventSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      createNeighborSpy.mockRestore();
+      restore();
+    }
+  });
+
   it.each([
     {
       name: 'required',
